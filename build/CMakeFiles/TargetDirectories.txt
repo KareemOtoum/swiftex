@@ -1,0 +1,3 @@
+/home/kareem/trading-engine/build/CMakeFiles/trading_engine.dir
+/home/kareem/trading-engine/build/CMakeFiles/edit_cache.dir
+/home/kareem/trading-engine/build/CMakeFiles/rebuild_cache.dir
