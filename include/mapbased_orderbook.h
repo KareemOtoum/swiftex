@@ -1,13 +1,13 @@
 #pragma once
 
 #include "order.h"
-#include <list>
+#include <deque>
 #include <map>
 #include <iostream>
 
-struct OrderBook
+struct MapBasedOrderBook
 {
-    using OrderList = std::list<Order>;
+    using OrderList = std::deque<Order>;
     using Price = double;
 
     std::map<Price, OrderList, std::greater<Price>> bids;
@@ -15,7 +15,7 @@ struct OrderBook
 };
 
 
-inline std::ostream &operator<<(std::ostream &out, const OrderBook &ob)
+inline std::ostream &operator<<(std::ostream &out, const MapBasedOrderBook &ob)
 {
     out << "BIDS\n";
     for (auto &[price, orderlist] : ob.bids)

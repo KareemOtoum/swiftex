@@ -1,17 +1,18 @@
-#include "matching_engine.h"
+#include "mapbased_matcher.h"
 #include <iostream>
 
 void test1();
+void test2();
 
 int main() {
     
-    test1();
+    test2();
     return 0;
 }
 
 void event_handler(const EngineResponse& res);
 
-MatchingEngine engine{};
+MapBasedMatcher engine{};
 
 void test1() {
     engine.get_orderbook().asks[50].push_back(
@@ -50,8 +51,8 @@ void test1() {
             .m_price{30.50},
             .m_quantity{200},
             .m_remaining_quantity{200},
-            .m_side{Side::BUY},
-            .m_type{Type::LIMIT}
+            .m_side{order::Side::BUY},
+            .m_type{order::Type::LIMIT}
         },
         .m_cmd = EngineCommand::ADD_ORDER
     };
@@ -61,6 +62,35 @@ void test1() {
     engine.process_request(req, event_handler);
 }
 
+void test2() {
+    engine.get_orderbook().bids[50].push_back(
+        Order{
+            .m_price { 50 },
+            .m_remaining_quantity { 100 }
+        }
+    );
+    engine.get_orderbook().bids[40].push_back(
+        Order{
+            .m_price { 40 },
+            .m_remaining_quantity { 50 }
+        }
+    );
+
+    EngineRequest req {
+        .m_order = Order{
+            .m_price{50},
+            .m_quantity{150},
+            .m_remaining_quantity{ 150 },
+            .m_side{order::Side::SELL},
+            .m_type{order::Type::LIMIT}
+        },
+        .m_cmd = EngineCommand::ADD_ORDER
+    };
+
+    std::cout << engine.get_orderbook() << "\n";
+
+    engine.process_request(req, event_handler);
+}
 
 void event_handler(const EngineResponse& res)
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "order.h"
-#include "order_book.h"
+#include "mapbased_orderbook.h"
 #include <functional>
 #include <variant>
 #include <cassert>
@@ -40,20 +40,13 @@ struct EngineResponse {
     uint64_t client_id{};
 };
 
-
+template<typename Derived>
 class MatchingEngine {
-
 public:
     using CallbackFunc = std::function<void(EngineResponse)>;
 
     void process_request(EngineRequest& req, 
-        CallbackFunc event_handler);
-    
-        auto& get_orderbook() { return m_orderbook; }
-
-private:
-    void handle_add(EngineRequest& req, 
-        CallbackFunc event_handler);
-
-    OrderBook m_orderbook;
+        CallbackFunc event_handler) {
+        static_cast<Derived*>(this)->process_request_impl(req, event_handler);
+    }
 };

@@ -3,15 +3,17 @@
 #include <cstdint>
 #include <string>
 
-enum class Side { 
-    BUY,
-    SELL
-};
+namespace order {
+    enum class Side { 
+        BUY,
+        SELL
+    };
 
-enum class Type {
-    MARKET,
-    LIMIT
-};
+    enum class Type {
+        MARKET,
+        LIMIT
+    };
+}
 
 struct Order {
     std::string m_symbol{};
@@ -20,6 +22,6 @@ struct Order {
     uint32_t m_quantity{};
     uint32_t m_remaining_quantity{};
 
-    Side m_side{};
-    Type m_type{};
+    order::Side m_side{};
+    order::Type m_type{};
 };
