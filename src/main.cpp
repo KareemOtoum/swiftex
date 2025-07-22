@@ -1,4 +1,5 @@
 #include "mapbased_matcher.h"
+#include "perthread_memory_pool.h"
 #include <iostream>
 
 void test1();
@@ -10,56 +11,17 @@ int main() {
     return 0;
 }
 
+template<typename T>
+void take(MatchingEngine<T>& engine) {
+
+}
+
 void event_handler(const EngineResponse& res);
 
-MapBasedMatcher engine{};
+MapBasedMatcher engine;
 
 void test1() {
-    engine.get_orderbook().asks[50].push_back(
-        Order{
-            .m_price { 50 },
-            .m_remaining_quantity { 100 }
-        }
-    );
-    engine.get_orderbook().asks[50.50].push_back(
-        Order{
-            .m_price { 50.50 },
-            .m_remaining_quantity { 50 }
-        }
-    );
-    engine.get_orderbook().asks[50.50].push_back(
-        Order{
-            .m_price { 50.50 },
-            .m_remaining_quantity { 220 }
-        }
-    );
-    engine.get_orderbook().asks[20.50].push_back(
-        Order{
-            .m_price { 20.50 },
-            .m_remaining_quantity { 150 }
-        }
-    );
-    engine.get_orderbook().asks[20.50].push_back(
-        Order{
-            .m_price { 20.50 },
-            .m_remaining_quantity { 20 }
-        }
-    );
-
-    EngineRequest req {
-        .m_order = Order{
-            .m_price{30.50},
-            .m_quantity{200},
-            .m_remaining_quantity{200},
-            .m_side{order::Side::BUY},
-            .m_type{order::Type::LIMIT}
-        },
-        .m_cmd = EngineCommand::ADD_ORDER
-    };
-
-    std::cout << engine.get_orderbook() << "\n";
-
-    engine.process_request(req, event_handler);
+    
 }
 
 void test2() {
@@ -69,27 +31,28 @@ void test2() {
             .m_remaining_quantity { 100 }
         }
     );
-    engine.get_orderbook().bids[40].push_back(
+    engine.get_orderbook().bids[50].push_back(
         Order{
             .m_price { 40 },
             .m_remaining_quantity { 50 }
         }
     );
 
-    EngineRequest req {
-        .m_order = Order{
-            .m_price{50},
-            .m_quantity{150},
-            .m_remaining_quantity{ 150 },
-            .m_side{order::Side::SELL},
-            .m_type{order::Type::LIMIT}
-        },
+    auto req_ptr = PerThreadMemoryPool<EngineRequest>::acquire();
+    *req_ptr = {
         .m_cmd = EngineCommand::ADD_ORDER
     };
+    auto order_ptr = PerThreadMemoryPool<Order>::acquire();
+    order_ptr->m_price = 50;
+    order_ptr->m_quantity = 150;
+    order_ptr->m_remaining_quantity = 150;
+    order_ptr->m_side = order::Side::SELL;
+    order_ptr->m_type = order::Type::LIMIT;
+    req_ptr->m_order = *order_ptr;
 
     std::cout << engine.get_orderbook() << "\n";
 
-    engine.process_request(req, event_handler);
+    engine.process_request(*req_ptr, event_handler);
 }
 
 void event_handler(const EngineResponse& res)
@@ -103,7 +66,8 @@ void event_handler(const EngineResponse& res)
         auto& order = std::get<Order>(res.m_payload);
         std::cout << "ACK remaining quantity: " << 
             order.m_remaining_quantity << " price: " << 
-            order.m_price << "\n";
+            order.m_price << "\n" <<
+            "id: " << order.m_id << "\n";
     }
     std::cout << engine.get_orderbook() << "\n";
 }

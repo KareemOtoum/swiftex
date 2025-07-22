@@ -71,8 +71,8 @@ void MapBasedMatcher::handle_limit_buy(EngineRequest& req,
             resting_order.m_remaining_quantity -= buy_size;
 
             EngineResponse res{
-                Trade{resting_order.m_order_id,
-                      order.m_order_id,
+                Trade{resting_order.m_id,
+                      order.m_id,
                       price,
                       buy_size},
                 EventType::TRADE_EXECUTED,
@@ -141,8 +141,8 @@ void MapBasedMatcher::handle_limit_sell(EngineRequest& req,
             resting_order.m_remaining_quantity -= buy_size;
 
             EngineResponse res{
-                Trade{resting_order.m_order_id,
-                      order.m_order_id,
+                Trade{resting_order.m_id,
+                      order.m_id,
                       price,
                       buy_size},
                 EventType::TRADE_EXECUTED,
@@ -211,8 +211,8 @@ void MapBasedMatcher::handle_market_buy(EngineRequest& req,
             resting_order.m_remaining_quantity -= buy_size;
 
             EngineResponse res{
-                Trade{resting_order.m_order_id,
-                      order.m_order_id,
+                Trade{resting_order.m_id,
+                      order.m_id,
                       price,
                       buy_size},
                 EventType::TRADE_EXECUTED,
@@ -281,8 +281,8 @@ void MapBasedMatcher::handle_market_sell(EngineRequest& req,
             resting_order.m_remaining_quantity -= buy_size;
 
             EngineResponse res{
-                Trade{resting_order.m_order_id,
-                      order.m_order_id,
+                Trade{resting_order.m_id,
+                      order.m_id,
                       price,
                       buy_size},
                 EventType::TRADE_EXECUTED,
