@@ -1,5 +1,11 @@
 #include "mapbased_matcher.h"
 
+void MapBasedMatcher::run_impl() {
+    while (server::g_running) {
+        
+    }
+}
+
 void MapBasedMatcher::process_request_impl(EngineRequest& req, 
         CallbackFunc event_handler) {
     switch (req.m_cmd)
@@ -71,12 +77,12 @@ void MapBasedMatcher::handle_limit_buy(EngineRequest& req,
             resting_order.m_remaining_quantity -= buy_size;
 
             EngineResponse res{
-                Trade{resting_order.m_id,
+                .m_payload = Trade{resting_order.m_id,
                       order.m_id,
                       price,
                       buy_size},
-                EventType::TRADE_EXECUTED,
-                req.client_id};
+                .client_id = req.client_id,
+                .m_event = EventType::TRADE_EXECUTED};
             event_handler(res);
 
             if (resting_order.m_remaining_quantity == 0)
@@ -101,8 +107,8 @@ void MapBasedMatcher::handle_limit_buy(EngineRequest& req,
             // send filled ack
             EngineResponse res{
                 order,
-                EventType::ACK,
-                req.client_id};
+                req.client_id,
+                EventType::ACK};
             event_handler(res);
             break;
         }
@@ -145,8 +151,8 @@ void MapBasedMatcher::handle_limit_sell(EngineRequest& req,
                       order.m_id,
                       price,
                       buy_size},
-                EventType::TRADE_EXECUTED,
-                req.client_id};
+                      req.client_id,
+                EventType::TRADE_EXECUTED};
             event_handler(res);
 
             if (resting_order.m_remaining_quantity == 0)
@@ -171,8 +177,8 @@ void MapBasedMatcher::handle_limit_sell(EngineRequest& req,
             // send filled ack
             EngineResponse res{
                 order,
-                EventType::ACK,
-                req.client_id};
+                req.client_id,
+                EventType::ACK};
             event_handler(res);
             break;
         }
@@ -215,8 +221,8 @@ void MapBasedMatcher::handle_market_buy(EngineRequest& req,
                       order.m_id,
                       price,
                       buy_size},
-                EventType::TRADE_EXECUTED,
-                req.client_id};
+                      req.client_id,
+                EventType::TRADE_EXECUTED};
             event_handler(res);
 
             if (resting_order.m_remaining_quantity == 0)
@@ -241,8 +247,8 @@ void MapBasedMatcher::handle_market_buy(EngineRequest& req,
             // send filled ack
             EngineResponse res{
                 order,
-                EventType::ACK,
-                req.client_id};
+                req.client_id,
+                EventType::ACK};
             event_handler(res);
             break;
         }
@@ -255,8 +261,8 @@ void MapBasedMatcher::handle_market_buy(EngineRequest& req,
     if (order.m_remaining_quantity > 0) {
         EngineResponse res{
             order,
-            EventType::ACK,
-            req.client_id};
+            req.client_id,
+            EventType::ACK};
         event_handler(res);
     }
 }
@@ -285,8 +291,8 @@ void MapBasedMatcher::handle_market_sell(EngineRequest& req,
                       order.m_id,
                       price,
                       buy_size},
-                EventType::TRADE_EXECUTED,
-                req.client_id};
+                      req.client_id,
+                EventType::TRADE_EXECUTED};
             event_handler(res);
 
             if (resting_order.m_remaining_quantity == 0)
@@ -311,8 +317,8 @@ void MapBasedMatcher::handle_market_sell(EngineRequest& req,
             // send filled ack
             EngineResponse res{
                 order,
-                EventType::ACK,
-                req.client_id};
+                req.client_id,
+                EventType::ACK};
             event_handler(res);
             break;
         }
@@ -325,8 +331,8 @@ void MapBasedMatcher::handle_market_sell(EngineRequest& req,
     if (order.m_remaining_quantity > 0) {
         EngineResponse res{
             order,
-            EventType::ACK,
-            req.client_id};
+            req.client_id,
+            EventType::ACK};
         event_handler(res);
     }
 }

@@ -36,14 +36,22 @@ enum class EventType {
 
 struct EngineResponse {
     std::variant<Trade, Order, uint64_t> m_payload{};
-    EventType m_event{};
     uint64_t client_id{};
+    EventType m_event{};
 };
 
 template<typename Derived>
 class MatchingEngine {
 public:
     using CallbackFunc = std::function<void(EngineResponse)>;
+
+    void run() {
+        static_cast<Derived*>(this)->run_impl();
+    }
+
+    auto& get_request_queue() {
+        return static_cast<Derived*>(this)->get_request_queue_impl();
+    }
 
     void process_request(EngineRequest& req, 
         CallbackFunc event_handler) {
