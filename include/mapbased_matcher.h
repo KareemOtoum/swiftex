@@ -1,6 +1,7 @@
 #pragma once
 
 #include "matching_engine.h"
+#include "worker.h"
 #include "memory.h"
 #include <algorithm>
 #include "mpsc_queue.h"
@@ -9,6 +10,7 @@
 class MapBasedMatcher : public MatchingEngine<MapBasedMatcher> {
     
 public:
+
     void run_impl();
 
     void process_request_impl(EngineRequest&, CallbackFunc);

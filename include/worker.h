@@ -43,26 +43,27 @@ namespace server {
 
     using MPSCReturnQueueT = 
         MPSCQueue<EngineResponse*, server::k_response_return_queue_size>;
-}
+
+    uint64_t generate_worker_id();
+};
 
 struct Worker {
-    Worker() : m_response_queue { std::make_shared<server::SPSCQueueT>() }, 
-        m_id { server::generate_worker_id() } { }
-
     std::shared_ptr<server::SPSCQueueT> m_response_queue;
     std::thread m_thread;
+    std::unordered_set<int> m_client_sockets;
 
     // epoll instance
     int m_epollfd{};
     int m_socketfd{};
 
-    int m_id;
+    uint64_t m_id;
 
     void run(server::MPSCQueueT&, server::MPSCReturnQueueT&,
         std::string_view port=server::k_default_port);
 
     void run_loop(server::EpollArray&, server::MPSCQueueT&, server::MPSCReturnQueueT&);
     void handle_new_client();
+    void shutdown_worker();
 };
 
 int setup_listening_socket(std::string_view port);

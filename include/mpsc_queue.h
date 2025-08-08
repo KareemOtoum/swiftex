@@ -9,7 +9,13 @@ class MPSCQueue {
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be power of 2");
 
 public:
-    MPSCQueue() : head_(0), tail_(0) {}
+    MPSCQueue() : head_(0), tail_(0) {
+        buffer_ = new T[Capacity];
+    }
+
+    ~MPSCQueue() {
+        delete buffer_;
+    }
 
     bool push(const T& item) noexcept {
         size_t head = head_.load(std::memory_order_relaxed);
@@ -53,5 +59,5 @@ public:
 private:
     alignas(64) std::atomic<size_t> head_;
     alignas(64) std::atomic<size_t> tail_;
-    alignas(64) T buffer_[Capacity];
+    alignas(64) T* buffer_;
 };

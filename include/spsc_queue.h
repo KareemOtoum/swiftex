@@ -9,7 +9,13 @@ class SPSCQueue {
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of two");
 
 public:
-    SPSCQueue() : head_(0), tail_(0) {}
+    SPSCQueue() : head_(0), tail_(0) {
+        buffer_ = new T[Capacity];
+    }
+
+    ~SPSCQueue() {
+        delete buffer_;
+    }
 
     // Producer thread
     bool push(const T& item) {
@@ -62,7 +68,7 @@ public:
 
 private:
     static constexpr size_t index_mask = Capacity - 1;
-    T buffer_[Capacity];
+    T* buffer_;
     alignas(64) std::atomic<size_t> head_;
     alignas(64) std::atomic<size_t> tail_;
 };

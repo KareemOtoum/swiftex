@@ -1,15 +1,6 @@
 #include "worker.h"
 #include "server.h"
 
-namespace server {
-    static std::atomic<uint64_t> worker_id_counter { 0 };
-
-    uint64_t generate_worker_id() {
-        return worker_id_counter.fetch_add(1, std::memory_order_relaxed);
-    }
-}
-
-
 void print_err(std::string_view msg) {
     std::cerr << msg << "\n";
 }
@@ -29,6 +20,7 @@ void Worker::handle_new_client() {
         new_client_ev.events = EPOLLIN;
         new_client_ev.data.fd = new_client_sock;
         epoll_ctl(m_epollfd, EPOLL_CTL_ADD, new_client_sock, &new_client_ev);
+        m_client_sockets.insert(new_client_sock);
     }
 }
 
@@ -53,6 +45,8 @@ void Worker::run(server::MPSCQueueT& request_queue,
 
     std::cout << "entering worker loop\n";
     run_loop(events, request_queue, return_response_queue);
+
+    shutdown_worker();
 }
 
 void Worker::run_loop(server::EpollArray& events,
@@ -68,10 +62,12 @@ void Worker::run_loop(server::EpollArray& events,
         for(int i{}; i < n; ++i) {
             int fd { events[i].data.fd };
 
+
             if(fd == m_socketfd) { // handle new client
                 handle_new_client();
             } else { // client packet
 
+                // TODO: handle client disconnect, remove from m_client_sockets;
                 auto req = PerThreadMemoryPool<EngineRequest>::acquire();
                 prev_requests.push_back(req);
             }
@@ -80,7 +76,8 @@ void Worker::run_loop(server::EpollArray& events,
         // check for matcher response in m_response_queue 
         while(!m_response_queue->empty()) {
             EngineResponse* response{};
-            if(m_response_queue->pop(response)) {
+            if(m_response_queue->pop(response)) { 
+                // handle response 
 
 
                 // send response obj back to matcher to free it 
@@ -91,6 +88,12 @@ void Worker::run_loop(server::EpollArray& events,
                 PerThreadMemoryPool<EngineRequest>::release(prev_req);
             }
         }
+    }
+}
+
+void Worker::shutdown_worker() {
+    for(int socket : m_client_sockets) {
+        close(socket);
     }
 }
 

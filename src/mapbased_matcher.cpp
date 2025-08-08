@@ -1,12 +1,13 @@
 #include "mapbased_matcher.h"
+#include "server.h"
 
 void MapBasedMatcher::run_impl() {
     EngineRequest* req{};
-    EngineResponse* res{};
+    EngineResponse* returned_res{};
     while (server::g_running) {
 
-        bool ok = m_request_queue.pop(req);
-        if(ok) {
+        // handle new request
+        if(m_request_queue.pop(req)) {
             // process request
 
             auto response = PerThreadMemoryPool<EngineResponse>::acquire();
@@ -17,9 +18,9 @@ void MapBasedMatcher::run_impl() {
             }
         }
 
-        ok = m_response_return_queue.pop(res);
-        if(ok) {
-            PerThreadMemoryPool<EngineResponse>::release(res);
+        // handle returned response obj
+        if(m_response_return_queue.pop(returned_res)) {
+            PerThreadMemoryPool<EngineResponse>::release(returned_res);
         }
     }
 }
