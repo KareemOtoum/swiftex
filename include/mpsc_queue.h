@@ -1,53 +1,57 @@
 #pragma once
-
 #include <atomic>
-#include <memory>
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
 
-template <typename T>
+template<typename T, size_t Capacity>
 class MPSCQueue {
+    static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be power of 2");
+
 public:
-    MPSCQueue() {
-        Node* dummy = new Node(); // dummy node
-        m_head.store(dummy);
-        m_tail = dummy;
-    }
+    MPSCQueue() : head_(0), tail_(0) {}
 
-    ~MPSCQueue() {
-        while (Node* old = m_tail) {
-            m_tail = old->next;
-            delete old;
+    bool push(const T& item) noexcept {
+        size_t head = head_.load(std::memory_order_relaxed);
+        size_t next_head = (head + 1) & (Capacity - 1);
+
+        // Check if queue is full
+        if (next_head == tail_.load(std::memory_order_acquire)) {
+            return false;
         }
+
+        buffer_[head] = item;
+        head_.store(next_head, std::memory_order_release);
+        return true;
     }
 
-    void enqueue(const T& value) {
-        Node* node = new Node(value);
-        Node* prev_m_head = m_head.exchange(node);
-        prev_m_head->next = node;
-    }
+    bool push(T&& item) noexcept {
+        size_t head = head_.load(std::memory_order_relaxed);
+        size_t next_head = (head + 1) & (Capacity - 1);
 
-    bool dequeue(T& result) {
-        Node* next = m_tail->next;
-        if (next) {
-            result = std::move(next->data);
-            delete m_tail;
-            m_tail = next;
-            return true;
+        if (next_head == tail_.load(std::memory_order_acquire)) {
+            return false;
         }
-        return false;
+
+        buffer_[head] = std::move(item);
+        head_.store(next_head, std::memory_order_release);
+        return true;
     }
 
-    bool empty() const {
-        return m_tail->next == nullptr;
+    bool pop(T& item) noexcept {
+        size_t tail = tail_.load(std::memory_order_relaxed);
+
+        if (tail == head_.load(std::memory_order_acquire)) {
+            return false; // empty
+        }
+
+        item = std::move(buffer_[tail]);
+        tail_.store((tail + 1) & (Capacity - 1), std::memory_order_release);
+        return true;
     }
 
 private:
-    struct Node {
-        T data;
-        Node* next = nullptr;
-        Node() = default;
-        explicit Node(const T& val) : data(val) {}
-    };
-
-    std::atomic<Node*> m_head;
-    Node* m_tail;
+    alignas(64) std::atomic<size_t> head_;
+    alignas(64) std::atomic<size_t> tail_;
+    alignas(64) T buffer_[Capacity];
 };

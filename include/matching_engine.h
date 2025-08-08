@@ -25,6 +25,7 @@ struct EngineRequest {
     Order m_order{};
     uint64_t client_id{};
     EngineCommand m_cmd{};
+    uint8_t m_worker_id{};
 };
 
 enum class EventType {
@@ -38,6 +39,7 @@ struct EngineResponse {
     std::variant<Trade, Order, uint64_t> m_payload{};
     uint64_t client_id{};
     EventType m_event{};
+    uint8_t m_worker_id{};
 };
 
 template<typename Derived>
@@ -51,6 +53,14 @@ public:
 
     auto& get_request_queue() {
         return static_cast<Derived*>(this)->get_request_queue_impl();
+    }
+
+    auto& get_response_return_queue() {
+        return static_cast<Derived*>(this)->get_response_return_queue_impl();
+    }
+
+    auto& get_response_queue_list() {
+        return static_cast<Derived*>(this)->get_response_queue_list_impl();
     }
 
     void process_request(EngineRequest& req, 

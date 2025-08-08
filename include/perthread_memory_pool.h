@@ -14,7 +14,7 @@ struct PoolInitializer {
 template<typename T, size_t PoolSize = 1024>
 class PerThreadMemoryPool {
 public:
-    using PoolPtr = std::unique_ptr<T, std::function<void(T*)>>;
+    using PoolPtr = T*;
 
     static PoolPtr acquire() {
         auto& pool = get_pool();
@@ -33,7 +33,7 @@ public:
         // send obj to custom init function
         PoolInitializer<T>::init(raw_ptr);
 
-        return PoolPtr(raw_ptr, [](T* ptr) { release(ptr); });
+        return raw_ptr;
     }
 
     static void release(T* obj) {

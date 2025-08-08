@@ -1,8 +1,26 @@
 #include "mapbased_matcher.h"
 
 void MapBasedMatcher::run_impl() {
+    EngineRequest* req{};
+    EngineResponse* res{};
     while (server::g_running) {
-        
+
+        bool ok = m_request_queue.pop(req);
+        if(ok) {
+            // process request
+
+            auto response = PerThreadMemoryPool<EngineResponse>::acquire();
+
+            auto& response_queue = *m_response_queue_list[req->m_worker_id];
+            if(!response_queue.full()) {
+                response_queue.push(response);
+            }
+        }
+
+        ok = m_response_return_queue.pop(res);
+        if(ok) {
+            PerThreadMemoryPool<EngineResponse>::release(res);
+        }
     }
 }
 

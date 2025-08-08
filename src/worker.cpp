@@ -1,11 +1,39 @@
 #include "worker.h"
 #include "server.h"
 
+namespace server {
+    static std::atomic<uint64_t> worker_id_counter { 0 };
+
+    uint64_t generate_worker_id() {
+        return worker_id_counter.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+
 void print_err(std::string_view msg) {
     std::cerr << msg << "\n";
 }
 
-void Worker::run(MPSCQueue<EngineRequest>& request_queue,
+void Worker::handle_new_client() {
+    static struct sockaddr_storage client_addr{};
+    static socklen_t client_addr_len{};
+
+    static epoll_event new_client_ev{};
+
+    int new_client_sock {
+        accept(m_socketfd, (struct sockaddr *)&client_addr, &client_addr_len)};
+
+    if (new_client_sock == -1) {
+        return;
+    } else {
+        new_client_ev.events = EPOLLIN;
+        new_client_ev.data.fd = new_client_sock;
+        epoll_ctl(m_epollfd, EPOLL_CTL_ADD, new_client_sock, &new_client_ev);
+    }
+}
+
+void Worker::run(server::MPSCQueueT& request_queue, 
+    server::MPSCReturnQueueT& return_response_queue,
     std::string_view port) {
     
     server::EpollArray events{};
@@ -24,17 +52,44 @@ void Worker::run(MPSCQueue<EngineRequest>& request_queue,
     epoll_ctl(m_epollfd, EPOLL_CTL_ADD, m_socketfd, &ev);
 
     std::cout << "entering worker loop\n";
-    run_loop(events, request_queue);
+    run_loop(events, request_queue, return_response_queue);
 }
 
 void Worker::run_loop(server::EpollArray& events,
-    MPSCQueue<EngineRequest>& request_queue) {
+    server::MPSCQueueT& request_queue, 
+    server::MPSCReturnQueueT& return_response_queue) { 
+
+    std::deque<EngineRequest*> prev_requests;
+    
     while(server::g_running) {
         int n = epoll_wait(m_epollfd, events.data(), server::k_maxEvents, 
             server::k_epoll_timeout_ms);
 
         for(int i{}; i < n; ++i) {
-            int fd = events[i].data.fd;
+            int fd { events[i].data.fd };
+
+            if(fd == m_socketfd) { // handle new client
+                handle_new_client();
+            } else { // client packet
+
+                auto req = PerThreadMemoryPool<EngineRequest>::acquire();
+                prev_requests.push_back(req);
+            }
+        }
+
+        // check for matcher response in m_response_queue 
+        while(!m_response_queue->empty()) {
+            EngineResponse* response{};
+            if(m_response_queue->pop(response)) {
+
+
+                // send response obj back to matcher to free it 
+                return_response_queue.push(response);
+                // free last request ptr
+                assert(!prev_requests.empty());
+                auto prev_req = prev_requests.front(); prev_requests.pop_front();
+                PerThreadMemoryPool<EngineRequest>::release(prev_req);
+            }
         }
     }
 }
