@@ -45,8 +45,6 @@ struct EngineResponse {
 template<typename Derived>
 class MatchingEngine {
 public:
-    using CallbackFunc = std::function<void(EngineResponse)>;
-
     void run() {
         static_cast<Derived*>(this)->run_impl();
     }
@@ -63,8 +61,7 @@ public:
         return static_cast<Derived*>(this)->get_response_queue_list_impl();
     }
 
-    void process_request(EngineRequest& req, 
-        CallbackFunc event_handler) {
-        static_cast<Derived*>(this)->process_request_impl(req, event_handler);
+    void process_request(EngineRequest& req) {
+        static_cast<Derived*>(this)->process_request_impl(req);
     }
 };

@@ -52,8 +52,6 @@ void Worker::run(server::MPSCQueueT& request_queue,
 void Worker::run_loop(server::EpollArray& events,
     server::MPSCQueueT& request_queue, 
     server::MPSCReturnQueueT& return_response_queue) { 
-
-    std::deque<EngineRequest*> prev_requests;
     
     while(server::g_running) {
         int n = epoll_wait(m_epollfd, events.data(), server::k_maxEvents, 
@@ -63,37 +61,85 @@ void Worker::run_loop(server::EpollArray& events,
             int fd { events[i].data.fd };
 
 
-            if(fd == m_socketfd) { // handle new client
+            if(fd == m_socketfd) { // new client
                 handle_new_client();
             } else { // client packet
-
                 // TODO: handle client disconnect, remove from m_client_sockets;
-                auto req = PerThreadMemoryPool<EngineRequest>::acquire();
-                prev_requests.push_back(req);
+
+                handle_request(fd, events[i], request_queue);
             }
         }
 
         // check for matcher response in m_response_queue 
-        while(!m_response_queue->empty()) {
-            EngineResponse* response{};
-            if(m_response_queue->pop(response)) { 
-                // handle response 
-
-
-                // send response obj back to matcher to free it 
-                return_response_queue.push(response);
-                // free last request ptr
-                assert(!prev_requests.empty());
-                auto prev_req = prev_requests.front(); prev_requests.pop_front();
-                PerThreadMemoryPool<EngineRequest>::release(prev_req);
-            }
-        }
+        handle_responses(request_queue, return_response_queue);
     }
 }
 
 void Worker::shutdown_worker() {
     for(int socket : m_client_sockets) {
         close(socket);
+    }
+}
+
+void Worker::disconnect_client(int clientfd, epoll_event& event) {
+    m_client_sockets.erase(clientfd);
+    epoll_ctl(m_epollfd, EPOLL_CTL_DEL, clientfd, &event);
+    close(clientfd);
+}
+
+void Worker::handle_request(int clientfd, 
+    epoll_event& event, server::MPSCQueueT& request_queue) {
+    static server::BufferT buffer{};
+    buffer = {};
+    
+    ssize_t bytes_read{ recv(clientfd, 
+        buffer.data(), sizeof(buffer), 0) };
+
+    if(bytes_read == -1) { // error disconnect client
+        disconnect_client(clientfd, event);
+        return;
+    } else if(bytes_read == 0) { // client closed connection
+        disconnect_client(clientfd, event);
+        return;
+    } 
+    
+    auto* request = PerThreadMemoryPool<EngineRequest>::acquire();
+    m_prev_requests.push_back(request);
+    size_t offset{};
+    deserialize_request(buffer, offset, *request);
+    request->client_id = clientfd;
+    request->m_worker_id = m_id;
+
+    request_queue.push(request);
+}
+
+void Worker::handle_responses(server::MPSCQueueT& request_queue, 
+    server::MPSCReturnQueueT& return_response_queue) {
+    server::BufferT buffer{};
+
+    EngineResponse *response{};
+    while (m_response_queue->pop(response))
+    {
+        std::cout << "got response from matching engine \n";
+        // handle response
+        assert(m_client_sockets.contains(response->client_id));
+        buffer = {};
+        size_t offset{};
+        serialize_response(buffer, offset, *response);
+        send(response->client_id,
+             buffer.data(), sizeof(buffer), 0);
+
+        // send response obj back to matcher to free it
+        return_response_queue.push(response);
+
+        // free last request ptr
+        if (response->m_event == EventType::ACK)
+        {
+            assert(!m_prev_requests.empty());
+            auto prev_req = m_prev_requests.front();
+            m_prev_requests.pop_front();
+            PerThreadMemoryPool<EngineRequest>::release(prev_req);
+        }
     }
 }
 
