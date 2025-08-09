@@ -152,6 +152,10 @@ void MapBasedMatcher::handle_limit_sell(
     EngineRequest& req) {
 
     auto& order = req.m_order;
+    if (order.m_remaining_quantity <= 0) {
+        std::cerr << "Rejecting order with zero remaining quantity\n";
+        return;
+    }
 
     std::cout << "processing LIMIT SELL Order\n";
     for(auto& [price, order_list] : m_orderbook.bids) {
@@ -230,7 +234,11 @@ void MapBasedMatcher::handle_market_buy(
     EngineRequest& req) {
 
     auto& order = req.m_order;
-    assert(order.m_remaining_quantity > 0);
+    
+    if (order.m_remaining_quantity <= 0) {
+        std::cerr << "Rejecting order with zero remaining quantity\n";
+        return;
+    }
 
     std::cout << "processing MARKET BUY Order\n";
 

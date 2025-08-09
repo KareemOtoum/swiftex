@@ -40,6 +40,10 @@ public:
         get_pool().m_stack.push_back(obj);
     }
 
+    static int size() {
+        return get_pool().m_stack.size();
+    }
+
 private:
     PerThreadMemoryPool() {
         m_stack.reserve(PoolSize);

@@ -53,6 +53,7 @@ struct Worker {
     std::thread m_thread;
     std::unordered_set<int> m_client_sockets;
     std::deque<EngineRequest*> m_prev_requests;
+    std::unordered_map<int, std::vector<uint8_t>> m_client_buffers;
 
     // epoll instance
     int m_epollfd{};
